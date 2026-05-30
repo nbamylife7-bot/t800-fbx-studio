@@ -12,7 +12,8 @@ GMR_ROOT = Path(os.environ.get("GMR_ROOT", WEB_ROOT / "gmr")).resolve()
 
 OUT_DIR = WEB_ROOT / "data" / "out"
 UPLOAD_DIR = WEB_ROOT / "data" / "uploads"
-DEMO_DIR = Path(os.environ.get("T800_DEMO_DIR", REPO_ROOT / "out")).resolve()
+EXAMPLES_DIR = WEB_ROOT / "examples"
+DEMO_DIR = Path(os.environ.get("T800_DEMO_DIR", EXAMPLES_DIR / "demos")).resolve()
 
 
 def bootstrap() -> tuple[Path, Path, Path]:

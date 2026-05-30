@@ -16,15 +16,39 @@ chmod +x install.sh run.sh scripts/*.sh
 ```
 
 1. Open **http://localhost:8080**
-2. Block **1. Source** → upload `.fbx` (Mixamo, root joint `Hips`)
-3. Status: `Loading…` → `Retargeting…` → `Ready — N frames`
+2. Block **1. Source** → set **Input type** (`fbx` / `bvh` / `pkl`) or pick a **Demo clip**
+3. Upload or set path — auto convert/load
 4. Play in browser; `.pkl` saved under `data/out/`
 
-## FBX SDK (required for `.fbx`)
+## Supported inputs
 
-Autodesk FBX SDK **cannot** be redistributed in this repo. Each user installs it once.
+All three formats work in the web UI:
 
-### Step 1 — Download (verified URLs)
+| Format | Supported | FBX SDK required? | Notes |
+|--------|-----------|-------------------|-------|
+| `.fbx` | **Yes** | **Yes** | Mixamo / OptiTrack; root `Hips` |
+| `.bvh` | **Yes** | No | LaFAN1 / `human_robot_hit` — works after `./install.sh` |
+| `.pkl` | **Yes** | No | T800 motion; demo clips in `examples/demos/` |
+
+> **FBX SDK required?** = whether Autodesk SDK is needed. **No** means the format works without `import fbx`.
+
+**Try without FBX:** Demo clip → `Boxing` / `Martelo_2` / `Flair`, or upload `examples/sample_human_robot_hit.bvh` with Input type = `bvh`.
+
+## FBX SDK (only for `.fbx`)
+
+### Fast path — prebuilt wheel (macOS Apple Silicon, Python 3.10)
+
+Bundled in repo — **no compile**:
+
+```bash
+./install.sh
+./scripts/install_fbx_sdk.sh    # installs vendor/fbx_wheels/*.whl
+python -c "import fbx; print('ok')"
+```
+
+See `vendor/fbx_wheels/README.md` (Autodesk license applies).
+
+### Build from sources (Linux, Intel Mac, other Python)
 
 Official page (scroll to **Past FBX SDK downloads → 2020.3.7**):
 
@@ -92,20 +116,14 @@ PYTHONPATH=".:gmr:gmr/third_party" python scripts/verify_setup.py
 T800_AUTO_DOWNLOAD_FBX=1 ./install.sh
 ```
 
-## Supported inputs
-
-| Type | Needs FBX SDK | Notes |
-|------|---------------|-------|
-| `.fbx` | **Yes** | Mixamo / OptiTrack; root `Hips` |
-| `.bvh` | No | LaFAN1 / human_robot_hit profiles |
-| `.pkl` | No | Previously converted T800 motion |
-
 ## Repo layout
 
 ```
 t800-fbx-studio/
   app/              # viser web UI
   gmr/              # bundled retarget backend + T800 assets (~100 MB)
+  vendor/fbx_wheels/  # prebuilt `fbx` wheel (macOS arm64 py3.10)
+  examples/         # demo .pkl + sample .bvh
   scripts/
     download_fbx_sdk.sh
     install_fbx_sdk.sh
@@ -120,12 +138,12 @@ t800-fbx-studio/
 - macOS or Linux (Windows untested)
 - Miniconda, **Python 3.10**
 - ~4 GB RAM for retargeting
-- Autodesk FBX SDK **2020.3.7** for `.fbx` files
+- FBX: prebuilt wheel (macOS arm64) or build from Autodesk 2020.3.7
 - See `requirements-web.txt`
 
 ## What is NOT included
 
-- Autodesk FBX SDK binaries (user installs via steps above)
+- Full Autodesk FBX C++ SDK tarball (prebuilt Python wheel + build scripts only)
 - Multi-user server / per-session isolation (local single-user tool)
 - Motion blend UI (removed)
 
@@ -141,12 +159,16 @@ MIT — see [LICENSE](LICENSE). T800 mesh/texture assets: use under your EngineA
 
 ---
 
-## Русский — FBX→PKL
+## Русский — форматы и FBX
 
-1. `./install.sh` — conda `t800-studio`, viser, torch, GMR backend  
-2. `./scripts/download_fbx_sdk.sh` — скачать SDK 2020.3.7 (~100 MB)  
-3. `source .fbx_sdk_cache/paths.env`  
-4. `./scripts/install_fbx_sdk.sh` — собрать `import fbx`  
-5. `./run.sh` → upload `.fbx` в браузере  
+| Формат | Работает? | FBX SDK |
+|--------|-----------|---------|
+| `.fbx` | да | нужен (или prebuilt wheel) |
+| `.bvh` | да | **не нужен** |
+| `.pkl` | да | **не нужен** |
 
-Если ссылка Autodesk 404 — используйте **aps.autodesk.com** или прямые `damassets.autodesk.net` URL из таблицы выше.
+1. `./install.sh`  
+2. `./scripts/install_fbx_sdk.sh` — на Mac M1/M2/M3 ставит **готовый wheel** из `vendor/fbx_wheels/`  
+3. `./run.sh` → upload `.fbx` / `.bvh` / `.pkl` или Demo clip  
+
+Примеры: `examples/demos/`, `examples/sample_human_robot_hit.bvh`
