@@ -1,32 +1,32 @@
 # Публикация на GitHub
 
-Репозиторий готов в папке `web-version/` (~100 MB с моделью T800).
+Репозиторий: https://github.com/nbamylife7-bot/t800-fbx-studio
 
 ```bash
 cd web-version
-git init
 git add .
-git commit -m "T800 FBX Studio: FBX/BVH to PKL + viser web preview"
-gh repo create t800-fbx-studio --public --source=. --remote=origin --push
-```
-
-Или без `gh`:
-
-```bash
-git remote add origin git@github.com:YOUR_USER/t800-fbx-studio.git
-git push -u origin main
+git commit -m "Fix FBX SDK install docs and download scripts"
+git push origin main
 ```
 
 ## Что получит пользователь после clone
 
 ```bash
-git clone https://github.com/YOUR_USER/t800-fbx-studio.git
+git clone https://github.com/nbamylife7-bot/t800-fbx-studio.git
 cd t800-fbx-studio
-./install.sh    # conda env t800-studio
+chmod +x install.sh run.sh scripts/*.sh
+./install.sh
+./scripts/download_fbx_sdk.sh
+source .fbx_sdk_cache/paths.env
+./scripts/install_fbx_sdk.sh
 ./run.sh        # localhost:8080
 ```
 
-FBX SDK каждый ставит сам (Autodesk, бесплатно) — см. README.
+Или одной командой с автозагрузкой SDK:
+
+```bash
+T800_AUTO_DOWNLOAD_FBX=1 ./install.sh
+```
 
 ## Обновление backend после правок в cyanpuppets
 
@@ -34,4 +34,5 @@ FBX SDK каждый ставит сам (Autodesk, бесплатно) — см
 ./scripts/bundle_gmr.sh
 git add gmr/
 git commit -m "Refresh bundled GMR backend"
+git push
 ```

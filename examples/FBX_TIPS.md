@@ -13,4 +13,14 @@ After upload, check **Status**:
 - `Retargeting …` — IK running
 - `Ready — N frames` — PKL saved under `data/out/`
 
-If FBX fails with `No module named 'fbx'`, run `./scripts/install_fbx_sdk.sh`.
+## If FBX fails
+
+```bash
+./scripts/download_fbx_sdk.sh
+source .fbx_sdk_cache/paths.env
+./scripts/install_fbx_sdk.sh
+conda activate t800-studio
+python -c "import fbx; print('ok')"
+```
+
+Download page (not the old 404 URL): https://aps.autodesk.com/developer/overview/fbx-sdk

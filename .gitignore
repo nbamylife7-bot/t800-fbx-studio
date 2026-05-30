@@ -22,3 +22,6 @@ data/uploads/*
 
 # Conda
 .conda/
+
+# FBX SDK download cache (Autodesk binaries, not redistributable)
+.fbx_sdk_cache/

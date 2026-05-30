@@ -18,8 +18,16 @@ echo "==> Installing Python packages"
 "$CONDA" run --no-capture-output -n "$ENV_NAME" pip install -r "$WEB_ROOT/requirements-web.txt"
 "$CONDA" run --no-capture-output -n "$ENV_NAME" pip install -e "$WEB_ROOT/gmr"
 
-echo "==> FBX SDK (Autodesk Python bindings)"
-bash "$WEB_ROOT/scripts/install_fbx_sdk.sh"
+echo "==> FBX SDK (Autodesk Python bindings — required for .fbx upload)"
+if ! bash "$WEB_ROOT/scripts/install_fbx_sdk.sh"; then
+  echo ""
+  echo "WARN: FBX module not installed. Studio works for BVH/PKL only."
+  echo "      To enable FBX→PKL:"
+  echo "        ./scripts/download_fbx_sdk.sh"
+  echo "        source .fbx_sdk_cache/paths.env"
+  echo "        ./scripts/install_fbx_sdk.sh"
+  echo ""
+fi
 
 echo "==> Verifying installation"
 cd "$WEB_ROOT"
