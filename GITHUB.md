@@ -16,7 +16,8 @@ git clone https://github.com/nbamylife7-bot/t800-fbx-studio.git
 cd t800-fbx-studio
 chmod +x install.sh run.sh scripts/*.sh
 ./install.sh
-./scripts/install_fbx_sdk.sh
+./scripts/install_fbx_sdk.sh          # optional — for .fbx
+./scripts/install_smplx_models.sh ~/Downloads/SMPLX_NEUTRAL_2020.npz   # for Kimodo .npz
 ./run.sh        # localhost:8080
 ```
 

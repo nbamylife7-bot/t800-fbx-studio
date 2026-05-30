@@ -28,6 +28,7 @@ import viser  # noqa: E402
 
 import scripts.bvh_to_robot as bvr  # noqa: E402
 import scripts.fbx_to_robot as fr  # noqa: E402
+import scripts.smplx_npz_to_robot as snpz  # noqa: E402
 import scripts.t800_foot_postprocess as foot_pp  # noqa: E402
 import scripts.t800_viser_robot as tvr  # noqa: E402
 from general_motion_retargeting import GeneralMotionRetargeting as GMR  # noqa: E402
@@ -191,6 +192,30 @@ def convert_bvh(
     return qpos_frames, str(save_path)
 
 
+def convert_smplx_npz(
+    npz_path: str,
+    *,
+    fps: int,
+    human_height: float,
+    auto_ground: bool,
+    flatten_feet: bool,
+    output_name: str,
+    status=lambda s: None,
+) -> tuple[list[np.ndarray], str, int]:
+    save_path = _output_path(npz_path, output_name)
+    frames, motion_fps = snpz.convert_smplx_amass_npz(
+        npz_path,
+        tgt_fps=int(fps),
+        human_height=float(human_height),
+        auto_ground=bool(auto_ground),
+        flatten_feet=bool(flatten_feet),
+        robot=ROBOT,
+        output_path=save_path,
+        status=status,
+    )
+    return frames, str(save_path), motion_fps
+
+
 class WebStudio:
     def __init__(self) -> None:
         host = os.environ.get("T800_WEB_HOST", os.environ.get("FBX_STUDIO_HOST", "0.0.0.0"))
@@ -209,7 +234,7 @@ class WebStudio:
         self.qpos_frames: List[np.ndarray] = []
         self.fps: int = 30
         self.frame_idx: int = 0
-        self.playing: bool = False
+        self.playing: bool = True
         self.loop_playback: bool = True
         self.last_pkl: Optional[str] = None
         self._lock = threading.Lock()
@@ -226,16 +251,19 @@ class WebStudio:
 
         with s.add_folder("1. Source"):
             s.add_markdown(
-                "Upload FBX/BVH/PKL or pick a demo — convert/load runs automatically. "
+                "Upload FBX/BVH/NPZ/PKL or pick a demo — convert/load runs automatically. "
                 "Progress in **Status**."
             )
             self.source_kind = s.add_dropdown(
                 "Input type",
-                options=["fbx", "bvh", "pkl"],
+                options=["fbx", "bvh", "npz", "pkl"],
                 initial_value="fbx",
             )
             self.path_box = s.add_text("File path", initial_value="")
-            self.upload_btn = s.add_upload_button("Upload file", mime_type=".fbx,.bvh,.pkl")
+            self.upload_btn = s.add_upload_button(
+                "Upload file",
+                mime_type=".fbx,.bvh,.npz,.pkl",
+            )
 
             @self.upload_btn.on_upload
             def _(_) -> None:
@@ -246,7 +274,18 @@ class WebStudio:
                 with open(dest, "wb") as fh:
                     fh.write(f.content)
                 ext = dest.suffix.lower().lstrip(".")
-                if ext in ("fbx", "bvh", "pkl"):
+                if ext == "npz":
+                    kind = snpz.detect_npz_kind(str(dest))
+                    if kind == "amass_smplx":
+                        self.source_kind.value = "npz"
+                    else:
+                        self._set_status(
+                            f"Uploaded {f.name}: {snpz.describe_npz_kind(kind)} — "
+                            "pick AMASS SMPL-X export from Kimodo."
+                        )
+                        self.path_box.value = str(dest)
+                        return
+                elif ext in ("fbx", "bvh", "pkl"):
                     self.source_kind.value = ext
                 self.path_box.value = str(dest)
                 self._set_status(f"Uploaded {f.name} — processing…")
@@ -265,6 +304,7 @@ class WebStudio:
             self.feet_on_load_box = s.add_checkbox(
                 "Apply flat-feet fix when loading PKL",
                 initial_value=True,
+                hint="Re-flatten foot soles on qpos after opening a .pkl (preview only until you save).",
             )
 
             self.demo_box = s.add_dropdown(
@@ -315,9 +355,21 @@ class WebStudio:
                 initial_value="position",
             )
             self.root_joint_box = s.add_text("FBX root joint", initial_value="Hips")
-            self.auto_ground_box = s.add_checkbox("Auto-ground source (BVH)", initial_value=True)
-            self.pelvis_box = s.add_checkbox("Stabilize pelvis (FBX)", initial_value=True)
-            self.feet_box = s.add_checkbox("Flat feet on ground", initial_value=True)
+            self.auto_ground_box = s.add_checkbox(
+                "Auto-ground source (BVH / SMPL-X NPZ)",
+                initial_value=True,
+                hint="Shift the human root down so the lowest point touches the floor before retargeting.",
+            )
+            self.pelvis_box = s.add_checkbox(
+                "Stabilize pelvis (FBX)",
+                initial_value=True,
+                hint="Lock pelvis/root orientation during position IK; reduces root flip on spins and kicks.",
+            )
+            self.feet_box = s.add_checkbox(
+                "Flat feet on ground",
+                initial_value=False,
+                hint="Flatten both foot soles to the ground during FBX/BVH/NPZ retarget. Off by default.",
+            )
             self.frame_start_box = s.add_number("Frame start (BVH)", initial_value=0, min=0, step=1)
             self.frame_end_box = s.add_number(
                 "Frame end (BVH, 0=all)",
@@ -374,20 +426,32 @@ class WebStudio:
                     self.texture_progress.visible = False
                     self.robot.set_skin(skin)  # type: ignore[arg-type]
 
-            self.grid_box = s.add_checkbox("Show ground grid", initial_value=True)
+            self.grid_box = s.add_checkbox(
+                "Show ground grid",
+                initial_value=True,
+                hint="Show or hide the floor reference grid in the 3D view.",
+            )
 
             @self.grid_box.on_update
             def _(_) -> None:
                 self._grid.visible = bool(self.grid_box.value)
 
         with s.add_folder("5. Playback"):
-            self.play_box = s.add_checkbox("Play", initial_value=False)
+            self.play_box = s.add_checkbox(
+                "Play",
+                initial_value=True,
+                hint="Start or pause motion playback in the timeline.",
+            )
 
             @self.play_box.on_update
             def _(_) -> None:
                 self.playing = bool(self.play_box.value)
 
-            self.loop_box = s.add_checkbox("Loop", initial_value=True)
+            self.loop_box = s.add_checkbox(
+                "Loop",
+                initial_value=True,
+                hint="When playback reaches the last frame, jump back to frame 0.",
+            )
 
             @self.loop_box.on_update
             def _(_) -> None:
@@ -492,6 +556,12 @@ class WebStudio:
                     return
                 if not self._do_convert(path=path):
                     return
+            elif kind == "npz":
+                if not path.lower().endswith(".npz"):
+                    self._set_status("Source type is NPZ — pick an AMASS SMPL-X .npz file.")
+                    return
+                if not self._do_convert(path=path):
+                    return
             else:
                 self._set_status(f"Unknown input type: {kind}")
                 return
@@ -554,6 +624,22 @@ class WebStudio:
                     output_name=str(self.output_name_box.value or ""),
                     status=self._set_status,
                 )
+            elif kind == "npz":
+                if not path.lower().endswith(".npz"):
+                    self._set_status("Source type is NPZ — pick an AMASS SMPL-X .npz file.")
+                    return False
+                frames, pkl, motion_fps = convert_smplx_npz(
+                    path,
+                    fps=int(self.fps_box.value),
+                    human_height=float(self.human_height_box.value),
+                    auto_ground=bool(self.auto_ground_box.value),
+                    flatten_feet=bool(self.feet_box.value),
+                    output_name=str(self.output_name_box.value or ""),
+                    status=self._set_status,
+                )
+                self._apply_loaded_frames(frames, motion_fps, pkl)
+                self._set_status(f"Ready — {len(frames)} frames from {os.path.basename(pkl)}.")
+                return True
             else:
                 self._set_status("For PKL, set Input type to pkl.")
                 return False

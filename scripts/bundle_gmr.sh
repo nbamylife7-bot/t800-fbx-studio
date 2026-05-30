@@ -22,9 +22,19 @@ rsync -a "$SRC/third_party/FbxCommon.py" "$SRC/third_party/poselib/" "$DST/third
 rsync -a \
   "$SRC/scripts/fbx_to_robot.py" \
   "$SRC/scripts/bvh_to_robot.py" \
+  "$SRC/scripts/smplx_npz_to_robot.py" \
   "$SRC/scripts/t800_viser_robot.py" \
   "$SRC/scripts/t800_foot_postprocess.py" \
   "$DST/scripts/"
+
+mkdir -p "$DST/assets/body_models/smplx"
+if [[ -d "$WEB_ROOT/gmr/assets/body_models" ]]; then
+  rsync -a "$WEB_ROOT/gmr/assets/body_models/" "$DST/assets/body_models/"
+elif [[ -d "$SRC/assets/body_models" ]]; then
+  rsync -a "$SRC/assets/body_models/" "$DST/assets/body_models/"
+else
+  touch "$DST/assets/body_models/smplx/.gitkeep"
+fi
 cp "$SRC/setup.py" "$DST/setup.py"
 touch "$DST/scripts/__init__.py"
 

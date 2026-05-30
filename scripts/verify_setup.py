@@ -47,6 +47,56 @@ def main() -> int:
         print("       FBX upload disabled until FBX SDK is installed (see install.sh).")
         fbx_ok = False
 
+    try:
+        __import__("smplx")
+        print("[OK] smplx")
+        smplx_pkg_ok = True
+    except ImportError as exc:
+        print(f"[WARN] smplx: {exc}")
+        smplx_pkg_ok = False
+
+    body_models = Path(
+        os.environ.get("SMPLX_BODY_MODELS", GMR_ROOT / "assets" / "body_models")
+    ).resolve()
+    smplx_dir = body_models / "smplx"
+    model_globs = list(smplx_dir.glob("SMPLX_*.npz")) + list(smplx_dir.glob("SMPLX_*.pkl"))
+    if model_globs:
+        print(f"[OK] SMPL-X body models ({len(model_globs)} file(s) in {smplx_dir})")
+        smplx_models_ok = True
+    else:
+        print(f"[WARN] SMPL-X body models: none in {smplx_dir}")
+        print("       NPZ upload disabled until you run ./scripts/install_smplx_models.sh")
+        smplx_models_ok = False
+
+    if smplx_pkg_ok and smplx_models_ok:
+        from general_motion_retargeting.utils.smpl import resolve_smplx_model_file  # noqa: E402
+
+        model_file = resolve_smplx_model_file(str(body_models), "neutral")
+        print(f"[OK] SMPL-X loader -> {Path(model_file).name}")
+
+    test_npz = os.environ.get("T800_TEST_NPZ", "").strip()
+    if test_npz and smplx_pkg_ok and smplx_models_ok:
+        test_path = Path(test_npz)
+        if not test_path.is_file():
+            print(f"[FAIL] T800_TEST_NPZ not found: {test_path}")
+            return 1
+        from app.studio import convert_smplx_npz  # noqa: E402
+
+        frames, pkl, fps = convert_smplx_npz(
+            str(test_path),
+            fps=30,
+            human_height=0.0,
+            auto_ground=True,
+            flatten_feet=False,
+            output_name="verify_npz_test.pkl",
+            status=lambda msg: print(f"  {msg}"),
+        )
+        assert len(frames) > 0, "no frames retargeted"
+        assert Path(pkl).is_file(), "pkl not written"
+        print(f"[OK] NPZ→PKL smoke test: {len(frames)} frames @ {fps} fps → {pkl}")
+    elif smplx_pkg_ok and smplx_models_ok:
+        print("[INFO] Set T800_TEST_NPZ=/path/to/motion.npz to run NPZ→PKL smoke test.")
+
     from general_motion_retargeting.params import ROBOT_XML_DICT  # noqa: E402
 
     check("T800 xml", lambda: Path(ROBOT_XML_DICT["t800"]).read_text()[:10])

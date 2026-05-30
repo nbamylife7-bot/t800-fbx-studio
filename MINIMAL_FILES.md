@@ -46,12 +46,15 @@ Place next to `web-version/` or set `GMR_ROOT` in `.env`.
 | `assets/t800/texture/` | PNG textures (full skin) |
 | `scripts/fbx_to_robot.py` | FBX → T800 |
 | `scripts/bvh_to_robot.py` | BVH → T800 |
+| `scripts/smplx_npz_to_robot.py` | Kimodo AMASS NPZ → T800 |
 | `scripts/t800_viser_robot.py` | viser 3D robot |
 | `scripts/t800_foot_postprocess.py` | flat feet |
+| `assets/body_models/smplx/` | SMPL-X model install dir (gitignored `.npz`) |
 
 ### Required IK configs (`general_motion_retargeting/ik_configs/`)
 
 - `fbx_to_t800.json` — FBX upload
+- `smplx_to_t800.json` — Kimodo AMASS NPZ
 - `bvh_lafan1_to_t800_origin_manual.json` — BVH lafan1
 - `bvh_human_robot_hit_to_t800--mild_two_stage.json` — human_robot_hit profile
 

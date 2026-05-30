@@ -4,8 +4,83 @@ import torch
 from scipy.spatial.transform import Rotation as R
 from smplx.joint_names import JOINT_NAMES
 from scipy.interpolate import interp1d
+import pathlib
 
 import general_motion_retargeting.utils.lafan_vendor.utils as utils
+
+
+def resolve_smplx_model_file(smplx_body_model_path, gender: str = "neutral") -> str:
+    """Return path to SMPLX_{GENDER} model file under body_models/smplx/."""
+    root = pathlib.Path(smplx_body_model_path)
+    smplx_dir = root / "smplx" if (root / "smplx").is_dir() else root
+    tag = gender.strip().upper()
+    for name in (
+        f"SMPLX_{tag}.npz",
+        f"SMPLX_{tag}_2020.npz",
+        f"SMPLX_{tag}.pkl",
+        f"SMPLX_{tag}_2020.pkl",
+    ):
+        candidate = smplx_dir / name
+        if candidate.is_file():
+            return str(candidate)
+    raise FileNotFoundError(
+        f"No SMPL-X model for gender={gender!r} under {smplx_dir}. "
+        f"Expected SMPLX_{tag}.npz or SMPLX_{tag}_2020.npz"
+    )
+
+
+def _as_scalar_fps(value, default: float = 30.0) -> float:
+    if value is None:
+        return float(default)
+    if hasattr(value, "item"):
+        return float(value.item())
+    return float(value)
+
+
+def _normalize_smplx_betas(betas: np.ndarray) -> np.ndarray:
+    betas = np.asarray(betas, dtype=np.float32).reshape(-1)
+    if betas.shape[0] < 16:
+        betas = np.pad(betas, (0, 16 - betas.shape[0]))
+    return betas[:16]
+
+
+def _smplx_optional_poses(smplx_data, num_frames: int):
+    """Read optional AMASS/Kimodo hand and face poses; zeros when absent."""
+    zeros45 = torch.zeros(num_frames, 45).float()
+    zeros3 = torch.zeros(num_frames, 3).float()
+
+    if "pose_hand" in smplx_data.files:
+        pose_hand = np.asarray(smplx_data["pose_hand"], dtype=np.float32)
+        if pose_hand.ndim == 2 and pose_hand.shape[1] >= 90:
+            left_hand = torch.tensor(pose_hand[:, :45]).float()
+            right_hand = torch.tensor(pose_hand[:, 45:90]).float()
+        elif pose_hand.ndim == 2 and pose_hand.shape[1] == 45:
+            left_hand = torch.tensor(pose_hand).float()
+            right_hand = zeros45
+        else:
+            left_hand = right_hand = zeros45
+    else:
+        left_hand = right_hand = zeros45
+
+    if "pose_jaw" in smplx_data.files:
+        jaw_pose = torch.tensor(np.asarray(smplx_data["pose_jaw"], dtype=np.float32)).float()
+        if jaw_pose.ndim == 1:
+            jaw_pose = jaw_pose.unsqueeze(0).expand(num_frames, -1)
+    else:
+        jaw_pose = zeros3
+
+    if "pose_eye" in smplx_data.files:
+        pose_eye = np.asarray(smplx_data["pose_eye"], dtype=np.float32)
+        if pose_eye.ndim == 2 and pose_eye.shape[1] >= 6:
+            leye_pose = torch.tensor(pose_eye[:, :3]).float()
+            reye_pose = torch.tensor(pose_eye[:, 3:6]).float()
+        else:
+            leye_pose = reye_pose = zeros3
+    else:
+        leye_pose = reye_pose = zeros3
+
+    return left_hand, right_hand, jaw_pose, leye_pose, reye_pose
+
 
 def load_smpl_file(smpl_file):
     smpl_data = np.load(smpl_file, allow_pickle=True)
@@ -13,37 +88,39 @@ def load_smpl_file(smpl_file):
 
 def load_smplx_file(smplx_file, smplx_body_model_path):
     smplx_data = np.load(smplx_file, allow_pickle=True)
+    gender = "neutral"
+    if "gender" in smplx_data.files:
+        gender = str(smplx_data["gender"])
+    model_file = resolve_smplx_model_file(smplx_body_model_path, gender)
+    ext = model_file.rsplit(".", 1)[-1]
     body_model = smplx.create(
-        smplx_body_model_path,
+        model_file,
         "smplx",
-        gender=str(smplx_data["gender"]),
+        gender=gender,
         use_pca=False,
+        ext=ext,
     )
-    # print(smplx_data["pose_body"].shape)
-    # print(smplx_data["betas"].shape)
-    # print(smplx_data["root_orient"].shape)
-    # print(smplx_data["trans"].shape)
-    
+
     num_frames = smplx_data["pose_body"].shape[0]
+    betas = _normalize_smplx_betas(smplx_data["betas"])
+    left_hand, right_hand, jaw_pose, leye_pose, reye_pose = _smplx_optional_poses(
+        smplx_data, num_frames
+    )
     smplx_output = body_model(
-        betas=torch.tensor(smplx_data["betas"]).float().view(1, -1), # (16,)
-        global_orient=torch.tensor(smplx_data["root_orient"]).float(), # (N, 3)
-        body_pose=torch.tensor(smplx_data["pose_body"]).float(), # (N, 63)
-        transl=torch.tensor(smplx_data["trans"]).float(), # (N, 3)
-        left_hand_pose=torch.zeros(num_frames, 45).float(),
-        right_hand_pose=torch.zeros(num_frames, 45).float(),
-        jaw_pose=torch.zeros(num_frames, 3).float(),
-        leye_pose=torch.zeros(num_frames, 3).float(),
-        reye_pose=torch.zeros(num_frames, 3).float(),
-        # expression=torch.zeros(num_frames, 10).float(),
+        betas=torch.tensor(betas).float().view(1, -1),
+        global_orient=torch.tensor(smplx_data["root_orient"]).float(),
+        body_pose=torch.tensor(smplx_data["pose_body"]).float(),
+        transl=torch.tensor(smplx_data["trans"]).float(),
+        left_hand_pose=left_hand,
+        right_hand_pose=right_hand,
+        jaw_pose=jaw_pose,
+        leye_pose=leye_pose,
+        reye_pose=reye_pose,
         return_full_pose=True,
     )
-    
-    if len(smplx_data["betas"].shape)==1:
-        human_height = 1.66 + 0.1 * smplx_data["betas"][0]
-    else:
-        human_height = 1.66 + 0.1 * smplx_data["betas"][0, 0]
-    
+
+    human_height = 1.66 + 0.1 * float(betas[0])
+
     return smplx_data, body_model, smplx_output, human_height
 
 
@@ -176,7 +253,9 @@ def get_smplx_data_offline_fast(smplx_data, body_model, smplx_output, tgt_fps=30
         ...
     }
     """
-    src_fps = smplx_data["mocap_frame_rate"].item()
+    src_fps = _as_scalar_fps(
+        smplx_data["mocap_frame_rate"] if "mocap_frame_rate" in smplx_data.files else None
+    )
     frame_skip = int(src_fps / tgt_fps)
     num_frames = smplx_data["pose_body"].shape[0]
     global_orient = smplx_output.global_orient.squeeze()
@@ -269,7 +348,9 @@ def get_gvhmr_data_offline_fast(smplx_data, body_model, smplx_output, tgt_fps=30
         ...
     }
     """
-    src_fps = smplx_data["mocap_frame_rate"].item()
+    src_fps = _as_scalar_fps(
+        smplx_data["mocap_frame_rate"] if "mocap_frame_rate" in smplx_data.files else None
+    )
     frame_skip = int(src_fps / tgt_fps)
     num_frames = smplx_data["pose_body"].shape[0]
     global_orient = smplx_output.global_orient.squeeze()

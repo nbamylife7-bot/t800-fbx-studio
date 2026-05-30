@@ -14,6 +14,11 @@ data/out/*
 data/uploads/*
 !data/uploads/.gitkeep
 
+# SMPL-X body models (gated license — user installs locally)
+gmr/assets/body_models/smplx/*
+!gmr/assets/body_models/smplx/.gitkeep
+!gmr/assets/body_models/README.md
+
 # OS / IDE
 .DS_Store
 .idea/

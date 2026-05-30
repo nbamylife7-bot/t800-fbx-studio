@@ -2,7 +2,7 @@
 
 ![T800 Motion Studio — browser GUI](docs/studio-demo.gif)
 
-**FBX / BVH → EngineAI T800 `.pkl`** with in-browser 3D preview (viser).
+**FBX / BVH / AMASS NPZ → EngineAI T800 `.pkl`** with in-browser 3D preview (viser).
 
 First open-source pipeline for **Mixamo/FBX motion → T800 robot** retargeting with flat feet and web preview. No desktop MuJoCo window required.
 
@@ -14,22 +14,40 @@ cd t800-fbx-studio
 
 chmod +x install.sh run.sh scripts/*.sh
 ./install.sh          # conda env + Python deps
+./scripts/install_smplx_models.sh ~/Downloads/SMPLX_NEUTRAL_2020.npz   # Kimodo .npz only
 ./run.sh              # http://localhost:8080
 ```
 
 1. Open **http://localhost:8080**
-2. In **1. Source**, set **Input type** (`fbx` / `bvh` / `pkl`) or pick a **Demo clip**
+2. In **1. Source**, set **Input type** (`fbx` / `bvh` / `npz` / `pkl`) or pick a **Demo clip**
 3. Upload a file or set a path — convert/load runs automatically
 4. Play in the browser; output `.pkl` files are saved under `data/out/`
 
+## Repository layout
+
+```
+t800-fbx-studio/
+  app/                    # viser web UI (studio.py)
+  gmr/                    # bundled GMR backend (IK, T800 assets, converters)
+    assets/t800/          # robot meshes + MuJoCo XML
+    assets/body_models/   # SMPL-X install dir (models gitignored)
+    scripts/              # fbx_to_robot, bvh_to_robot, smplx_npz_to_robot, …
+  data/out/               # converted .pkl (runtime)
+  data/uploads/           # uploaded sources (runtime)
+  examples/               # sample BVH + demo PKL
+  vendor/fbx_wheels/      # prebuilt FBX SDK wheel (macOS arm64)
+  scripts/                # install.sh helpers, bundle_gmr.sh (maintainers)
+```
+
 ## Supported inputs
 
-All three formats work in the web UI:
+All four formats work in the web UI:
 
 | Format | Supported | FBX SDK required? | Notes |
 |--------|-----------|-------------------|-------|
 | `.fbx` | **Yes** | **Yes** | Mixamo / OptiTrack; root joint `Hips` |
 | `.bvh` | **Yes** | No | LaFAN1 / `human_robot_hit` — works after `./install.sh` |
+| `.npz` | **Yes** | No | **Kimodo AMASS SMPL-X** export (`pose_body`, `root_orient`, `trans`); needs SMPL-X body models (see below) |
 | `.pkl` | **Yes** | No | T800 motion; demo clips in `examples/demos/` |
 
 > **FBX SDK required?** means whether the Autodesk SDK is needed. **No** = works without `import fbx`.
@@ -40,7 +58,29 @@ All three formats work in the web UI:
 
 In **2. Retarget options**, toggle **Flat feet on ground** (off by default).
 
-If the retargeted motion looks wrong — the robot stands on tiptoes, feet float above the floor, or the pose feels stiff — try turning this option **on** or **off**, then click **Re-convert / reload source**. Kicks, walks, and different sources (FBX vs BVH) often need different settings.
+If the retargeted motion looks wrong — the robot stands on tiptoes, feet float above the floor, or the pose feels stiff — try turning this option **on** or **off**, then click **Re-convert / reload source**. Kicks, walks, and different sources (FBX vs BVH vs NPZ) often need different settings.
+
+## SMPL-X body models (only for `.npz`)
+
+Kimodo **AMASS SMPL-X** NPZ files are retargeted through the official SMPL-X forward kinematics path (`smplx_to_t800.json`). You must install gated body models separately:
+
+```bash
+./scripts/install_smplx_models.sh ~/Downloads/SMPLX_NEUTRAL_2020.npz
+```
+
+Or manually:
+
+1. Register at [SMPL-X](https://smpl-x.is.tue.mpg.de/) and download `SMPLX_NEUTRAL` (+ MALE/FEMALE if needed).
+2. Place under `gmr/assets/body_models/smplx/` — supported names: `SMPLX_NEUTRAL.npz`, `SMPLX_NEUTRAL_2020.npz`, or `.pkl`.
+3. If using `.pkl`, set `ext = 'pkl'` in your installed `smplx/body_models.py` (see upstream GMR README).
+
+Or point to an existing install:
+
+```bash
+export SMPLX_BODY_MODELS="/path/to/body_models"
+```
+
+In Kimodo, export as **AMASS SMPL-X NPZ** (not the native `posed_joints` layout).
 
 ## FBX SDK (only for `.fbx`)
 
@@ -153,7 +193,7 @@ MIT — see [LICENSE](LICENSE). T800 mesh/texture assets: use under your EngineA
 
 # T800 FBX Studio（中文）
 
-**FBX / BVH → EngineAI T800 `.pkl`**，浏览器内 3D 预览（viser）。
+**FBX / BVH / AMASS NPZ → EngineAI T800 `.pkl`**，浏览器内 3D 预览（viser）。
 
 首个开源 **Mixamo/FBX 动作 → T800 机器人** 重定向流程，支持脚部贴地与 Web 预览。无需桌面 MuJoCo 窗口。
 
@@ -165,22 +205,37 @@ cd t800-fbx-studio
 
 chmod +x install.sh run.sh scripts/*.sh
 ./install.sh          # 创建 conda 环境并安装依赖
+./scripts/install_smplx_models.sh ~/Downloads/SMPLX_NEUTRAL_2020.npz   # 仅 Kimodo .npz 需要
 ./run.sh              # http://localhost:8080
 ```
 
 1. 打开 **http://localhost:8080**
-2. 在 **1. Source** 中选择 **Input type**（`fbx` / `bvh` / `pkl`）或选择 **Demo clip**
+2. 在 **1. Source** 中选择 **Input type**（`fbx` / `bvh` / `npz` / `pkl`）或选择 **Demo clip**
 3. 上传文件或填写路径 — 自动转换/加载
 4. 在浏览器中播放；输出的 `.pkl` 保存在 `data/out/`
 
+## 仓库结构
+
+```
+t800-fbx-studio/
+  app/                    # viser Web UI
+  gmr/                    #  bundled GMR 后端
+    assets/t800/          # 机器人 mesh + MuJoCo XML
+    assets/body_models/   # SMPL-X 安装目录（模型不入 git）
+  data/out/               # 转换输出的 .pkl
+  examples/               # 示例 BVH 与 demo PKL
+  vendor/fbx_wheels/      # 预编译 FBX SDK wheel
+```
+
 ## 支持的输入格式
 
-三种格式均可在 Web UI 中使用：
+四种格式均可在 Web UI 中使用：
 
 | 格式 | 是否支持 | 需要 FBX SDK？ | 说明 |
 |------|----------|----------------|------|
 | `.fbx` | **是** | **是** | Mixamo / OptiTrack；根骨骼 `Hips` |
 | `.bvh` | **是** | 否 | LaFAN1 / `human_robot_hit` — `./install.sh` 后即可使用 |
+| `.npz` | **是** | 否 | **Kimodo AMASS SMPL-X** 导出（`pose_body`、`root_orient`、`trans`）；需安装 SMPL-X 人体模型（见下文） |
 | `.pkl` | **是** | 否 | T800 动作；示例见 `examples/demos/` |
 
 > **需要 FBX SDK？** 表示是否需要安装 Autodesk SDK。**否** = 无需 `import fbx` 即可使用。
@@ -191,7 +246,29 @@ chmod +x install.sh run.sh scripts/*.sh
 
 在 **2. Retarget options** 中切换 **Flat feet on ground**（默认关闭）。
 
-若重定向后的动作不正常 — 机器人踮脚、脚悬空或姿态僵硬 — 请尝试**开启或关闭**该选项，然后点击 **Re-convert / reload source**。踢腿、行走以及不同来源（FBX / BVH）往往需要不同设置。
+若重定向后的动作不正常 — 机器人踮脚、脚悬空或姿态僵硬 — 请尝试**开启或关闭**该选项，然后点击 **Re-convert / reload source**。踢腿、行走以及不同来源（FBX / BVH / NPZ）往往需要不同设置。
+
+## SMPL-X 人体模型（仅 `.npz` 需要）
+
+Kimodo **AMASS SMPL-X** NPZ 通过官方 SMPL-X 正向运动学路径重定向（`smplx_to_t800.json`）。需单独安装受许可的 body models：
+
+```bash
+./scripts/install_smplx_models.sh ~/Downloads/SMPLX_NEUTRAL_2020.npz
+```
+
+或手动安装：
+
+1. 在 [SMPL-X](https://smpl-x.is.tue.mpg.de/) 注册并下载 `SMPLX_NEUTRAL`（及 MALE/FEMALE 如需要）。
+2. 放到 `gmr/assets/body_models/smplx/` — 支持 `SMPLX_NEUTRAL.npz`、`SMPLX_NEUTRAL_2020.npz` 或 `.pkl`。
+3. 若使用 `.pkl`，请在已安装的 `smplx/body_models.py` 中将 `ext` 设为 `'pkl'`（见上游 GMR README）。
+
+或指定已有路径：
+
+```bash
+export SMPLX_BODY_MODELS="/path/to/body_models"
+```
+
+Kimodo 中请导出为 **AMASS SMPL-X NPZ**（非原生 `posed_joints` 格式）。
 
 ## FBX SDK（仅 `.fbx` 需要）
 

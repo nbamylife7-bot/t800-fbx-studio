@@ -21,12 +21,23 @@ echo "==> Installing Python packages"
 echo "==> FBX SDK (Autodesk Python bindings — required for .fbx upload)"
 if ! bash "$WEB_ROOT/scripts/install_fbx_sdk.sh"; then
   echo ""
-  echo "WARN: FBX module not installed. Studio works for BVH/PKL only."
+  echo "WARN: FBX module not installed. Studio works for BVH/PKL/NPZ without FBX SDK."
   echo "      To enable FBX→PKL:"
   echo "        ./scripts/download_fbx_sdk.sh"
   echo "        source .fbx_sdk_cache/paths.env"
   echo "        ./scripts/install_fbx_sdk.sh"
   echo ""
+fi
+
+echo "==> SMPL-X body models (required for Kimodo AMASS .npz)"
+SMPLX_DIR="$WEB_ROOT/gmr/assets/body_models/smplx"
+if compgen -G "$SMPLX_DIR/SMPLX_"*.npz >/dev/null 2>&1 \
+   || compgen -G "$SMPLX_DIR/SMPLX_"*.pkl >/dev/null 2>&1; then
+  echo "    found under $SMPLX_DIR"
+else
+  echo "    not installed — NPZ upload disabled until you run:"
+  echo "      ./scripts/install_smplx_models.sh /path/to/SMPLX_NEUTRAL_2020.npz"
+  echo "    See gmr/assets/body_models/README.md"
 fi
 
 echo "==> Verifying installation"

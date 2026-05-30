@@ -10,6 +10,7 @@ CONDA="${CONDA_EXE:-/opt/miniconda3/bin/conda}"
 ENV_NAME="${T800_WEB_ENV:-t800-studio}"
 
 export GMR_ROOT="${GMR_ROOT:-$WEB_ROOT/gmr}"
+export SMPLX_BODY_MODELS="${SMPLX_BODY_MODELS:-$GMR_ROOT/assets/body_models}"
 export T800_WEB_HOST="${T800_WEB_HOST:-0.0.0.0}"
 export T800_WEB_PORT="${T800_WEB_PORT:-8080}"
 export T800_DEMO_DIR="${T800_DEMO_DIR:-$WEB_ROOT/data/out}"
