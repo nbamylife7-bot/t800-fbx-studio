@@ -1,0 +1,19 @@
+[Unit]
+Description=T800 Web Studio (viser)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/cyanpuppets/web-version
+Environment=CYANPUPPETS_ROOT=/opt/cyanpuppets
+Environment=GMR_ROOT=/opt/cyanpuppets/Новая папка 8/GMR
+Environment=T800_WEB_HOST=127.0.0.1
+Environment=T800_WEB_PORT=8080
+Environment=PYTHONPATH=/opt/cyanpuppets/Новая папка 8/GMR:/opt/cyanpuppets/Новая папка 8/GMR/third_party
+ExecStart=/opt/miniconda3/bin/conda run --no-capture-output -n gmr python -m app.studio
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

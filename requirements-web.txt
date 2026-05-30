@@ -1,0 +1,12 @@
+viser>=0.2.0
+trimesh>=4.0.0
+Pillow>=10.0.0
+numpy>=1.24
+scipy>=1.10
+mujoco>=3.0
+mink
+qpsolvers[proxqp]
+loop_rate_limiters
+rich
+tqdm
+torch>=2.0
