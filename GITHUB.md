@@ -1,34 +1,32 @@
-# Публикация на GitHub
+# Publishing to GitHub
 
-Репозиторий: https://github.com/nbamylife7-bot/t800-fbx-studio
+Repository: https://github.com/nbamylife7-bot/t800-fbx-studio
 
 ```bash
 cd web-version
 git add .
-git commit -m "Fix FBX SDK install docs and download scripts"
+git commit -m "Update README"
 git push origin main
 ```
 
-## Что получит пользователь после clone
+## After clone
 
 ```bash
 git clone https://github.com/nbamylife7-bot/t800-fbx-studio.git
 cd t800-fbx-studio
 chmod +x install.sh run.sh scripts/*.sh
 ./install.sh
-./scripts/download_fbx_sdk.sh
-source .fbx_sdk_cache/paths.env
 ./scripts/install_fbx_sdk.sh
 ./run.sh        # localhost:8080
 ```
 
-Или одной командой с автозагрузкой SDK:
+Or auto-download FBX SDK during install:
 
 ```bash
 T800_AUTO_DOWNLOAD_FBX=1 ./install.sh
 ```
 
-## Обновление backend после правок в cyanpuppets
+## Refresh bundled GMR backend (maintainers)
 
 ```bash
 ./scripts/bundle_gmr.sh
