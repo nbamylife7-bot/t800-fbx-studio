@@ -1,5 +1,7 @@
 # T800 FBX Studio
 
+![T800 Motion Studio — browser GUI](docs/studio-demo.gif)
+
 **FBX / BVH → EngineAI T800 `.pkl`** with in-browser 3D preview (viser).
 
 First open-source pipeline for **Mixamo/FBX motion → T800 robot** retargeting with flat feet and web preview. No desktop MuJoCo window required.
@@ -33,6 +35,12 @@ All three formats work in the web UI:
 > **FBX SDK required?** means whether the Autodesk SDK is needed. **No** = works without `import fbx`.
 
 **Try without FBX:** Demo clip → `Boxing` / `Martelo_2` / `Flair`, or upload `examples/sample_human_robot_hit.bvh` with Input type = `bvh`.
+
+## Flat feet on ground
+
+In **2. Retarget options**, toggle **Flat feet on ground** (off by default).
+
+If the retargeted motion looks wrong — the robot stands on tiptoes, feet float above the floor, or the pose feels stiff — try turning this option **on** or **off**, then click **Re-convert / reload source**. Kicks, walks, and different sources (FBX vs BVH) often need different settings.
 
 ## FBX SDK (only for `.fbx`)
 
@@ -116,6 +124,7 @@ t800-fbx-studio/
   gmr/                # bundled retarget backend + T800 assets (~100 MB)
   vendor/fbx_wheels/  # prebuilt fbx wheel (macOS arm64, Python 3.10)
   examples/           # demo .pkl + sample .bvh
+  docs/               # README assets (studio-demo.gif)
   scripts/
   data/out/           # converted PKL (gitignored)
   install.sh
@@ -177,6 +186,12 @@ chmod +x install.sh run.sh scripts/*.sh
 > **需要 FBX SDK？** 表示是否需要安装 Autodesk SDK。**否** = 无需 `import fbx` 即可使用。
 
 **无需 FBX 即可试用：** Demo clip → `Boxing` / `Martelo_2` / `Flair`，或上传 `examples/sample_human_robot_hit.bvh`（Input type = `bvh`）。
+
+## 脚部贴地（Flat feet on ground）
+
+在 **2. Retarget options** 中切换 **Flat feet on ground**（默认关闭）。
+
+若重定向后的动作不正常 — 机器人踮脚、脚悬空或姿态僵硬 — 请尝试**开启或关闭**该选项，然后点击 **Re-convert / reload source**。踢腿、行走以及不同来源（FBX / BVH）往往需要不同设置。
 
 ## FBX SDK（仅 `.fbx` 需要）
 
@@ -260,6 +275,7 @@ t800-fbx-studio/
   gmr/                # 重定向后端 + T800 资源（约 100 MB）
   vendor/fbx_wheels/  # 预编译 fbx wheel（macOS arm64，Python 3.10）
   examples/           # 示例 .pkl 与 .bvh
+  docs/               # README 资源（studio-demo.gif）
   scripts/
   data/out/           # 转换输出（git 忽略）
   install.sh
