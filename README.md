@@ -141,12 +141,6 @@ t800-fbx-studio/
 - FBX: prebuilt wheel (macOS arm64) or build from Autodesk 2020.3.7
 - See `requirements-web.txt`
 
-## What is NOT included
-
-- Full Autodesk FBX C++ SDK tarball (prebuilt Python wheel + build scripts only)
-- Multi-user server / per-session isolation (local single-user tool)
-- Motion blend UI (removed)
-
 ## Credits
 
 Built on [GMR](https://github.com/YanjieZe/GMR) retargeting patterns, extended for **EngineAI T800** with custom FBX IK (`fbx_to_t800.json`), foot flattening, and viser preview.
